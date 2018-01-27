@@ -1,4 +1,5 @@
 #include "AbacusHash.hpp"
+#include <iostream>
 #include <unordered_map>
 #include <vector>
 #include <random>
@@ -69,7 +70,8 @@ struct ID
 	uint record;
 	Enum2 e2;
 
-	friend bool operator == (const ID& lhs, const ID& rhs) {
+	friend bool operator == (const ID& lhs, const ID& rhs)
+	{
 		return lhs.idx == rhs.idx && lhs.e1 == rhs.e1 && lhs.record == rhs.record;
 	}
 

@@ -7,6 +7,13 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-add_executable(${PROJECT_NAME} main.cpp AbacusHash.hpp)
+set(bin_name "abacus_hash")
+
+set(src_list
+	src/main.cpp
+	src/AbacusHash.hpp
+	)
+
+add_executable(${bin_name} ${src_list})
