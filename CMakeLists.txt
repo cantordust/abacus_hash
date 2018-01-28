@@ -13,7 +13,7 @@ set(bin_name "abacus_hash")
 
 set(src_list
 	src/main.cpp
-	src/AbacusHash.hpp
+	src/abacus_hash.hpp
 	)
 
 add_executable(${bin_name} ${src_list})

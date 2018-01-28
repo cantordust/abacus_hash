@@ -64,9 +64,9 @@ Besides the obvious convenience, for some reason a flat hashmap using abacus has
 
 # Usage
 
-This is a header-only library, just download AbacusHash.hpp and `#include` it. You have to add the `std::hash` specialisation:
+This is a header-only library, just download abacus_ash.hpp and `#include` it. You have to add the `std::hash` specialisation:
 
-0. `#include "AbacusHash.hpp"` (doh!)
+0. `#include "abacus_hash.hpp"` (doh!)
 
 1. Add a custom `operator ==` to your `struct` or `class`:
 
