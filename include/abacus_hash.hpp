@@ -1,5 +1,5 @@
-#ifndef MAIN_HPP
-#define MAIN_HPP
+#ifndef ABACUS_HASH
+#define ABACUS_HASH
 
 /// @brief Uncomment if printing hashes and bitsets.
 //#include <iostream>
@@ -78,4 +78,4 @@ static inline size_t tuple_hash(std::tuple<T, Rest ...>&& _tpl)
 	return bitset_hash<8 * tp_size<T, Rest...>(), 1, sizeof (T), T, Rest...>(std::move(h), std::forward<decltype (_tpl)>(_tpl));
 }
 
-#endif // MAIN_HPP
+#endif // ABACUS_HASH
