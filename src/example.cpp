@@ -9,6 +9,8 @@ using uchar = unsigned char;
 using uint = unsigned int;
 template<typename T1, typename T2> using hmap = std::unordered_map<T1, T2>;
 
+using namespace AbacusHash;
+
 struct EnumHash
 {
 	template<typename E, typename std::enable_if<std::is_enum<E>::value, void>::type ... >
