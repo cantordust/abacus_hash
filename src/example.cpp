@@ -4,19 +4,20 @@
 #include <vector>
 #include <random>
 #include <chrono>
+#include <functional>
+#include <memory>
 
 using uchar = unsigned char;
 using uint = unsigned int;
 template<typename T1, typename T2> using hmap = std::unordered_map<T1, T2>;
-
-using namespace AbacusHash;
+template<typename T> using sptr = std::shared_ptr<T>;
 
 struct EnumHash
 {
 	template<typename E, typename std::enable_if<std::is_enum<E>::value, void>::type ... >
 	auto operator() (E _e) const
 	{
-		return utype(_e);
+		return AbacusHash::Internal::utype(_e);
 	}
 };
 
@@ -72,6 +73,17 @@ struct ID
 	uint record;
 	Enum2 e2;
 
+	ID(const uint _idx,
+	   const Enum1 _e1,
+	   const uint _record,
+	   const Enum2 _e2)
+		:
+		  idx(_idx),
+		  e1(_e1),
+		  record(_record),
+		  e2(_e2)
+	{}
+
 	friend bool operator == (const ID& lhs, const ID& rhs)
 	{
 		return lhs.idx == rhs.idx && lhs.e1 == rhs.e1 && lhs.record == rhs.record;
@@ -83,26 +95,39 @@ struct ID
 	}
 };
 
+using IDRef = std::reference_wrapper<ID>;
+using IDPtr = std::shared_ptr<ID>;
+
 namespace std
 {
 	template <>
 	struct hash<ID>
 	{
-		size_t operator()(const ID& _t) const noexcept
+		size_t operator()(const ID& _id) const noexcept
 		{
-			return tuple_hash(std::make_tuple(_t.idx, _t.e1, _t.record, _t.e2));
+			return AbacusHash::hash(_id.idx, _id.e1, _id.record, _id.e2);
+		}
+	};
+
+	template <>
+	struct hash<IDRef>
+	{
+		size_t operator()(const IDRef& _idref) const noexcept
+		{
+			return AbacusHash::hash(_idref.get().idx, _idref.get().e1, _idref.get().record, _idref.get().e2);
 		}
 	};
 }
 
-static std::mt19937_64 rng;
-static std::uniform_int_distribution<uint> d_idx(0, std::numeric_limits<uint>::max());
-static std::uniform_int_distribution<uint> d_enum1(0, 3);
-static std::uniform_int_distribution<uint> d_record(0, std::numeric_limits<uint>::max());
-static std::uniform_int_distribution<uint> d_enum2(0, 4);
+std::mt19937_64 rng;
+std::uniform_int_distribution<uint> d_idx(0, std::numeric_limits<uint>::max());
+std::uniform_int_distribution<uint> d_enum1(0, 3);
+std::uniform_int_distribution<uint> d_record(0, std::numeric_limits<uint>::max());
+std::uniform_int_distribution<uint> d_enum2(0, 4);
 
-static hmap<ID, uint> flat_map;
-static hmap<uint, emap<Enum1, hmap<uint, emap<Enum2, uint>>>> deep_map;
+hmap<IDPtr, uint> sptr_map;
+hmap<IDRef, uint> flat_map;
+hmap<uint, emap<Enum1, hmap<uint, emap<Enum2, uint>>>> deep_map;
 
 uint get_idx()
 {
@@ -139,7 +164,7 @@ Enum2 get_enum2()
 	}
 }
 
-static inline auto now()
+inline auto now()
 {
 	return std::chrono::steady_clock::now();
 //	return std::chrono::high_resolution_clock::now();
@@ -149,27 +174,19 @@ int main()
 {
 	rng.seed(std::chrono::high_resolution_clock::now().time_since_epoch().count());
 
-	std::cout << "sizeof(ID): " << sizeof(ID) << "\n";
-	std::cout << "sizeof(Enum1): " << sizeof(Enum1) << "\n";
-	std::cout << "sizeof(uint): " << sizeof(uint) << "\n";
-	std::cout << "sizeof(long): " << sizeof(long) << "\n";
-	std::cout << "sizeof(hmap<uint,uint>): " << sizeof(hmap<uint, uint>) << "\n";
-	std::cout << "sizeof(flat_map): " << sizeof(decltype (flat_map)) << "\n";
-	std::cout << "sizeof(deep_map): " << sizeof(decltype (deep_map)) << "\n";
+	uint elements(1000000);
+	std::vector<IDPtr> ids;
 
-	uint iter(100000);
-	std::vector<ID> ids;
-
-	for (uint i	= 0; i < iter; ++i)
+	for (uint i	= 0; i < elements; ++i)
 	{
-		ids.push_back({get_idx(), get_enum1(), get_record(), get_enum2()});
+		ids.push_back(std::make_shared<ID>(get_idx(), get_enum1(), get_record(), get_enum2()));
 	}
 
 	auto start(now());
 
-	for (const auto& id : ids)
+	for (auto& id : ids)
 	{
-		flat_map[id] = id.idx;
+		flat_map[std::ref(*id)] = id->idx;
 	}
 
 	auto duration(now() - start);
@@ -181,7 +198,7 @@ int main()
 
 	for (const auto& id : ids)
 	{
-		deep_map[id.idx][id.e1][id.record][id.e2] = id.idx;
+		deep_map[id->idx][id->e1][id->record][id->e2] = id->idx;
 	}
 
 	duration = now() - start;
@@ -189,10 +206,29 @@ int main()
 	std::cout << "deep_map size: " << deep_map.size()
 			  << "\n\ttook " << std::chrono::duration_cast<std::chrono::milliseconds>(duration).count() << " ms\n";
 
+
+	start = now();
+
+	for (const auto& id : ids)
+	{
+		sptr_map[id] = id->idx;
+	}
+
+	duration = now() - start;
+
+	std::cout << "sptr_map size: " << sptr_map.size()
+			  << "\n\ttook " << std::chrono::duration_cast<std::chrono::milliseconds>(duration).count() << " ms\n";
+
 //	std::cout << "Flat map:\n";
 //	for (const auto& m : flat_map)
 //	{
 //		std::cout << m.first << ": " << m.second << "\n";
+//	}
+
+//	std::cout << "\nSptr map:\n";
+//	for (const auto& s : sptr_map)
+//	{
+//		std::cout << *s.first << ": " << s.second << "\n";
 //	}
 
 //	std::cout << "\nDeep map:\n";
@@ -211,6 +247,57 @@ int main()
 //				}
 //			}
 //		}
+//	}
+
+	std::cout << "\nChanging ID at ids.back() to 5...\n";
+	ids.back()->idx = 5;
+
+	/// Important: rehash to avoid dangling references
+	flat_map.rehash(0);
+
+//	std::cout << "\nFlat map:\n";
+//	for (const auto& m : flat_map)
+//	{
+//		std::cout << m.first << ": " << m.second << "\n";
+//	}
+
+//	std::cout << "\nID with idx 5:\n";
+//	for (const auto& m : flat_map)
+//	{
+//		if (m.first.get().idx == 5)
+//		{
+//			std::cout << m.first << ": " << m.second << "\n";
+//		}
+//	}
+
+	std::cout << "\nErasing ref to last ID from flat map...\n";
+	flat_map.erase(std::ref(*ids.back()));
+
+//	std::cout << "\nFlat map:\n";
+//	for (const auto& m : flat_map)
+//	{
+//		std::cout << m.first << ": " << m.second << "\n";
+//	}
+
+//	std::cout << "\nID vector size: " << ids.size() << "\n"
+//			  << "\nFlat map size: " << flat_map.size() << "\n"
+//			  << "\nDeep map size: " << deep_map.size() << "\n"
+//			  << "\nSptr map size: " << sptr_map.size() << "\n";
+
+//	std::cout << "\nSptr map:\n";
+//	for (const auto& id : sptr_map)
+//	{
+//		std::cout << "(use count: " << id.first.use_count() << ") " << *id.first << ": " << id.second << "\n";
+//	}
+
+	std::cout << "\nErasing sptr to last ID from sptr map...\n";
+
+	sptr_map.erase(ids.back());
+
+//	std::cout << "\nSptr map:\n";
+//	for (const auto& id : sptr_map)
+//	{
+//		std::cout << *id.first << ": " << id.second << "\n";
 //	}
 
 	return 0;
